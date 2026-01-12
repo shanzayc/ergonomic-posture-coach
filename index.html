@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ergonomic Posture Coach</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="container">
+    <h1>Ergonomic Posture Coach</h1>
+
+    <div class="controls">
+      <button id="startButton">Start Session</button>
+    </div>
+
+    <div class="main-content">
+      <div class="instructions-panel">
+        <h2>📋 Instructions</h2>
+        <ol>
+          <li><strong>Position your webcam</strong> directly in front of you at eye level</li>
+          <li><strong>Sit upright</strong> with good posture - head and shoulders in frame</li>
+          <li><strong>Click "Start Session"</strong> above and allow camera access</li>
+          <li><strong>Calibrate automatically:</strong> The app will learn your neutral posture in the first 5 seconds</li>
+          <li><strong>Continue working</strong> as usual - we'll notify you if you slouch!</li>
+        </ol>
+        <p style="margin-top: 20px; padding: 15px; background: rgba(78, 205, 196, 0.2); border-radius: 10px; font-size: 0.9rem;">
+          💡 <strong>Privacy:</strong> All processing runs in your browser. No video is uploaded or stored.
+        </p>
+      </div>
+
+      <div class="canvas-wrapper">
+        <div id="posturePill" class="posture-pill neutral"></div>
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="gameCanvas" width="640" height="480"></canvas>
+
+        <div id="overlay" class="overlay">
+          <h2 id="overlayMessage">Click "Start Session" to begin</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay hidden">
+    <div class="loading-content">
+      <div class="loader"></div>
+      <h2>Loading Posture Model</h2>
+      <p id="loadingStatus">Initializing…</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
+  <script src="postureTracking.js"></script>
+  <script src="postureCoach.js"></script>
+</body>
+</html>
