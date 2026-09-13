@@ -16,7 +16,7 @@ const config = {
     headForwardThresh: 0.22,
     shoulderTiltThresh: 0.12,
     headDropThresh: 0.18,
-
+    minCalibrationSamples: 45,
 };
 
 // ---------------- STATE ----------------
@@ -28,6 +28,8 @@ let state = {
     samples: [],
     badDuration: 0,
     lastTick: null,
+    calibStartedAt: null,
+    lastSampledPose: null,
 };
 
 // ---------------- HELPERS ----------------
@@ -111,14 +113,31 @@ function tick() {
 
     // ---- AUTO CALIBRATION ----
     if (state.mode === "autoCalibrating") {
-        setPill("Learning your neutral posture…", "warn");
+        if (state.calibStartedAt === null) state.calibStartedAt = now;
 
-        if (features) state.samples.push(features);
+        // tick() runs at ~60fps but poses arrive at ~30fps, so sample each
+        // pose once rather than counting the same one twice.
+        if (features && state.pose !== state.lastSampledPose) {
+            state.samples.push(features);
+            state.lastSampledPose = state.pose;
+        }
 
-        if (state.samples.length >= config.autoCalibrateSeconds * 15) {
-            state.baseline = averageFeatures(state.samples);
-            state.mode = "monitoring";
-            setPill("Posture monitoring active ✅", "good");
+        const elapsed = (now - state.calibStartedAt) / 1000;
+        const remaining = Math.max(
+            0,
+            Math.ceil(config.autoCalibrateSeconds - elapsed)
+        );
+        setPill(`Learning your neutral posture… ${remaining}s`, "warn");
+
+        if (elapsed >= config.autoCalibrateSeconds) {
+            if (state.samples.length >= config.minCalibrationSamples) {
+                state.baseline = averageFeatures(state.samples);
+                state.mode = "monitoring";
+                setPill("Posture monitoring active ✅", "good");
+            } else {
+                // Too few clean reads to trust a baseline — keep collecting.
+                setPill("Sit in frame to calibrate…", "warn");
+            }
         }
     }
 
@@ -186,6 +205,8 @@ async function startSession() {
     state.samples = [];
     state.badDuration = 0;
     state.lastTick = null;
+    state.calibStartedAt = null;
+    state.lastSampledPose = null;
 
     tick();
 }
