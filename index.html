@@ -21,7 +21,9 @@
 
     <div class="controls">
       <button id="startButton">Start Session</button>
+      <button id="endButton" class="secondary hidden">End Session</button>
     </div>
+    <p id="notifyNote" class="notify-note"></p>
 
     <div class="main-content">
       <div class="instructions-panel">
@@ -35,6 +37,7 @@
         </ol>
         <p style="margin-top: 20px; padding: 15px; background: rgba(78, 205, 196, 0.2); border-radius: 10px; font-size: 0.9rem;">
           💡 <strong>Privacy:</strong> All processing runs in your browser. No video is uploaded or stored.
+          Session stats are saved only on this device.
         </p>
       </div>
 
@@ -47,6 +50,31 @@
           <h2 id="overlayMessage">Click "Start Session" to begin</h2>
         </div>
       </div>
+    </div>
+
+    <div class="stats-panel">
+      <h2>📊 This Session</h2>
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <span class="stat-value" id="statDuration">0:00</span>
+          <span class="stat-label">Tracked</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value" id="statGood">—</span>
+          <span class="stat-label">Good posture</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value" id="statStreak">0:00</span>
+          <span class="stat-label">Best streak</span>
+        </div>
+        <div class="stat-tile">
+          <span class="stat-value" id="statAlerts">0</span>
+          <span class="stat-label">Alerts</span>
+        </div>
+      </div>
+
+      <h2>🕓 Recent Sessions</h2>
+      <div id="historyList" class="history-list"></div>
     </div>
   </div>
 
