@@ -4,11 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ergonomic Posture Coach</title>
+  <meta name="description" content="Real-time posture monitoring that runs entirely in your browser. No video is uploaded or stored." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
-    href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Poppins:wght@400;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
   />
 
@@ -16,73 +17,103 @@
 </head>
 
 <body>
-  <div class="container">
-    <h1>Ergonomic Posture Coach</h1>
-
-    <div class="controls">
-      <button id="startButton">Start Session</button>
-      <button id="endButton" class="secondary hidden">End Session</button>
-    </div>
-    <p id="notifyNote" class="notify-note"></p>
-
-    <div class="main-content">
-      <div class="instructions-panel">
-        <h2>📋 Instructions</h2>
-        <ol>
-          <li><strong>Position your webcam</strong> directly in front of you at eye level</li>
-          <li><strong>Sit upright</strong> with good posture - head and shoulders in frame</li>
-          <li><strong>Click "Start Session"</strong> above and allow camera access</li>
-          <li><strong>Calibrate automatically:</strong> The app will learn your neutral posture in the first 5 seconds</li>
-          <li><strong>Continue working</strong> as usual - we'll notify you if you slouch!</li>
-        </ol>
-        <p style="margin-top: 20px; padding: 15px; background: rgba(78, 205, 196, 0.2); border-radius: 10px; font-size: 0.9rem;">
-          💡 <strong>Privacy:</strong> All processing runs in your browser. No video is uploaded or stored.
-          Session stats are saved only on this device.
-        </p>
+  <div class="page">
+    <header class="masthead">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="5.5" r="3.1" />
+          <path d="M6.5 21v-5.5a5.5 5.5 0 0 1 11 0V21" />
+        </svg>
+        <span class="brand-name">Posture Coach</span>
       </div>
+      <h1>Sit better while you work.</h1>
+      <p class="tagline">
+        Real-time posture monitoring using on-device pose detection.
+        Nothing you record ever leaves this browser.
+      </p>
+    </header>
 
-      <div class="canvas-wrapper">
-        <div id="posturePill" class="posture-pill neutral"></div>
-        <video id="webcam" autoplay playsinline></video>
-        <canvas id="gameCanvas" width="640" height="480"></canvas>
+    <main class="layout">
+      <section class="stage">
+        <div class="canvas-wrapper">
+          <div id="posturePill" class="posture-pill neutral"></div>
+          <video id="webcam" autoplay playsinline></video>
+          <canvas id="gameCanvas" width="640" height="480"></canvas>
 
-        <div id="overlay" class="overlay">
-          <h2 id="overlayMessage">Click "Start Session" to begin</h2>
+          <div id="overlay" class="overlay">
+            <svg class="overlay-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M23 7l-7 5 7 5V7z" />
+              <rect x="1" y="5" width="15" height="14" rx="2" />
+            </svg>
+            <h2 id="overlayMessage">Start a session to begin monitoring</h2>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <div class="stats-panel">
-      <h2>📊 This Session</h2>
-      <div class="stat-grid">
-        <div class="stat-tile">
-          <span class="stat-value" id="statDuration">0:00</span>
-          <span class="stat-label">Tracked</span>
+        <div class="stage-bar">
+          <div class="controls">
+            <button id="startButton" class="btn btn-primary">Start session</button>
+            <button id="endButton" class="btn btn-ghost hidden">End session</button>
+          </div>
+          <p id="notifyNote" class="notify-note"></p>
         </div>
-        <div class="stat-tile">
-          <span class="stat-value" id="statGood">—</span>
-          <span class="stat-label">Good posture</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-value" id="statStreak">0:00</span>
-          <span class="stat-label">Best streak</span>
-        </div>
-        <div class="stat-tile">
-          <span class="stat-value" id="statAlerts">0</span>
-          <span class="stat-label">Alerts</span>
-        </div>
-      </div>
+      </section>
 
-      <h2>🕓 Recent Sessions</h2>
+      <aside class="side">
+        <section class="card">
+          <h2 class="card-title">This session</h2>
+          <div class="stat-grid">
+            <div class="stat-tile">
+              <span class="stat-value" id="statDuration">0:00</span>
+              <span class="stat-label">Tracked</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value" id="statGood">&mdash;</span>
+              <span class="stat-label">Good posture</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value" id="statStreak">0:00</span>
+              <span class="stat-label">Best streak</span>
+            </div>
+            <div class="stat-tile">
+              <span class="stat-value" id="statAlerts">0</span>
+              <span class="stat-label">Alerts</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2 class="card-title">How it works</h2>
+          <ol class="steps">
+            <li>Put your webcam in front of you, near eye level.</li>
+            <li>Sit the way you want to sit &mdash; head and shoulders in frame.</li>
+            <li>Start the session and allow camera access.</li>
+            <li>The first 5 seconds calibrate to <em>your</em> neutral posture.</li>
+            <li>Keep working. You'll be alerted if you drift, even on another tab.</li>
+          </ol>
+          <p class="note">
+            <strong>Private by design.</strong> Pose detection runs locally in your
+            browser. No video is uploaded or stored, and session stats stay on this device.
+          </p>
+        </section>
+      </aside>
+    </main>
+
+    <section class="card history-card">
+      <h2 class="card-title">Recent sessions</h2>
       <div id="historyList" class="history-list"></div>
-    </div>
+    </section>
+
+    <footer class="footer">
+      Built with TensorFlow.js and MediaPipe BlazePose &middot;
+      <a href="https://github.com/shanzayc/ergonomic-posture-coach">Source on GitHub</a>
+    </footer>
   </div>
 
   <div id="loadingOverlay" class="loading-overlay hidden">
     <div class="loading-content">
       <div class="loader"></div>
-      <h2>Loading Posture Model</h2>
-      <p id="loadingStatus">Initializing…</p>
+      <h2>Loading posture model</h2>
+      <p id="loadingStatus">Initializing&hellip;</p>
     </div>
   </div>
 
