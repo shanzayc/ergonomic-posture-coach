@@ -230,7 +230,6 @@ function evaluatePosture() {
             if (state.samples.length >= config.minCalibrationSamples) {
                 state.baseline = averageFeatures(state.samples);
                 state.mode = "monitoring";
-                state.stats = freshStats();
                 setPill("Posture monitoring active ✅", "good");
             } else {
                 // Too few clean reads to trust a baseline — keep collecting.
@@ -379,6 +378,8 @@ function renderHistory() {
 
 // ---------------- DRAW LOOP ----------------
 // Purely visual, so it's fine that the browser pauses this when hidden.
+let drawFrameId = null;
+
 function drawLoop() {
     const webcam = document.getElementById("webcam");
     if (webcam.readyState === webcam.HAVE_ENOUGH_DATA) {
@@ -392,7 +393,7 @@ function drawLoop() {
 
     renderStats();
 
-    if (state.mode !== "idle") requestAnimationFrame(drawLoop);
+    if (state.mode !== "idle") drawFrameId = requestAnimationFrame(drawLoop);
 }
 
 function drawKeypoints(pose) {
@@ -410,33 +411,53 @@ function drawKeypoints(pose) {
 }
 
 // ---------------- SESSION ----------------
+// Re-learns the neutral posture. Stats carry on: it's still the same session.
+function beginCalibration() {
+    state.mode = "autoCalibrating";
+    state.samples = [];
+    state.badDuration = 0;
+    state.status = "neutral";
+    state.calibStartedAt = null;
+    state.lastSampledPose = null;
+    state.stats.currentStreakMs = 0;
+}
+
 async function startSession() {
+    // Camera, detection and drawing are already running; don't start more.
+    if (state.mode !== "idle") {
+        beginCalibration();
+        return;
+    }
+
+    startButton.disabled = true;
     loadingOverlay.classList.remove("hidden");
     loadingStatus.textContent = "Starting camera…";
 
     await requestNotificationPermission();
 
     const webcam = document.getElementById("webcam");
-    const ok = await window.postureTracking.setupPostureTracking(webcam, pose => {
-        state.pose = pose;
-        evaluatePosture();
-    });
+    const ok = await window.postureTracking.setupPostureTracking(
+        webcam,
+        pose => {
+            state.pose = pose;
+            evaluatePosture();
+        },
+        message => {
+            loadingStatus.textContent = message;
+        }
+    );
 
     loadingOverlay.classList.add("hidden");
+    startButton.disabled = false;
     if (!ok) return;
+
+    state.stats = freshStats();
+    state.lastEvalAt = null;
+    state.lastNotifyAt = -Infinity;
+    beginCalibration();
 
     window.postureTracking.startDetection();
     overlay.classList.add("hidden");
-
-    state.mode = "autoCalibrating";
-    state.samples = [];
-    state.badDuration = 0;
-    state.status = "neutral";
-    state.lastEvalAt = null;
-    state.calibStartedAt = null;
-    state.lastSampledPose = null;
-    state.stats = freshStats();
-    state.lastNotifyAt = -Infinity;
 
     startButton.textContent = "Recalibrate";
     endButton.classList.remove("hidden");
@@ -448,14 +469,15 @@ async function startSession() {
 function endSession() {
     if (state.mode === "idle") return;
 
-    window.postureTracking.stopDetection();
+    window.postureTracking.stopCamera();
+    cancelAnimationFrame(drawFrameId);
     saveSessionToHistory(state.stats);
 
     state.mode = "idle";
     state.pose = null;
     state.status = "neutral";
 
-    startButton.textContent = "Start Session";
+    startButton.textContent = "Start session";
     endButton.classList.add("hidden");
     overlay.classList.remove("hidden");
     document.getElementById("overlayMessage").textContent =
