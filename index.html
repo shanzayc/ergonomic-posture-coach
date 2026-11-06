@@ -122,16 +122,18 @@
     <section id="evalCard" class="card eval-card" hidden>
       <h2 class="card-title">Accuracy test</h2>
       <p class="debug-legend">
-        Each round walks through all 7 postures: a 3-second countdown, then hold the posture
-        for 7 seconds (beeps mark the start and end). Every frame is saved, then scored against
-        the original rules and the current ones. Start a session and finish calibrating first.
+        Each round walks through the postures you pick: a 3-second countdown, then hold the
+        posture for 7 seconds (beeps mark the start and end). Every frame is saved, then scored
+        against the original rules and the current ones. Start a session and finish calibrating first.
       </p>
+      <div id="evalPostures" class="eval-postures"></div>
       <div class="eval-controls">
         <label class="eval-rounds">Rounds <input id="evalRounds" type="number" min="1" max="20" value="10" /></label>
         <button id="evalStart" class="btn btn-primary btn-small">Start test</button>
         <button id="evalStop" class="btn btn-ghost btn-small" hidden>Stop</button>
       </div>
       <div id="evalPrompt" class="eval-prompt" aria-live="polite"></div>
+      <select id="evalRunFilter" class="eval-run-filter" aria-label="Which test run to show" hidden></select>
       <div id="evalResults"></div>
       <div class="eval-actions">
         <button id="evalCopy" class="btn btn-ghost btn-small">Copy summary</button>

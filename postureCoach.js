@@ -30,6 +30,11 @@ const config = {
     headForwardThresh: 0.12, // face 12% larger next to the shoulders: head jutting out
     headSidewaysThresh: 0.15, // head further off-center than baseline: leaning to one side
     shoulderTiltThresh: 0.12, // shoulders more uneven than baseline
+    // Slumping usually meant sinking back away from the camera (shoulders
+    // 19-37% narrower in 7 of 10 test slumps) with the head sinking a little.
+    // Requiring both keeps sitting back upright from counting.
+    slumpBackThresh: 0.15, // shoulders 15% narrower in frame...
+    slumpDropMin: 0.03, // ...while the head sits at least this much lower
     // Face 15% narrower means the head is turned (e.g. to another monitor).
     // A turned head shifts sideways too, so that check is skipped.
     headTurnThresh: 0.15,
@@ -165,22 +170,13 @@ function headTurned(f, b) {
 // looks at, so the ?debug panel can highlight them. Checks only fire in the
 // "worse" direction: if calibration caught you slightly off, sitting
 // straighter than that shouldn't count against you.
+//
+// Several checks often fire at once, and the alert names the first one, so
+// the order puts causes before side effects. Leaning in also makes the face
+// look bigger, so "leaning toward the screen" comes before "head jutting
+// forward"; looking down usually involves a slight lean, so "head down"
+// comes before both.
 const POSTURE_CHECKS = [
-    {
-        label: "leaning toward the screen",
-        signals: ["shoulderWidthPx"],
-        test: (f, b) => relChange(f.shoulderWidthPx, b.shoulderWidthPx) > config.leanInThresh,
-    },
-    {
-        label: "head down",
-        signals: ["headDrop"],
-        test: (f, b) => f.headDrop - b.headDrop > config.headDropThresh,
-    },
-    {
-        label: "head jutting forward",
-        signals: ["eyeRatio", "earRatio"],
-        test: (f, b) => faceChange(f, b) > config.headForwardThresh,
-    },
     {
         // Unknown head direction counts as turned: better a missed lean than
         // an alert every time they look at their other monitor.
@@ -190,6 +186,28 @@ const POSTURE_CHECKS = [
             faceChange(f, b) !== null &&
             !headTurned(f, b) &&
             f.headSideways - b.headSideways > config.headSidewaysThresh,
+    },
+    {
+        label: "head down",
+        signals: ["headDrop"],
+        test: (f, b) => f.headDrop - b.headDrop > config.headDropThresh,
+    },
+    {
+        label: "slumped back in the chair",
+        signals: ["shoulderWidthPx", "headDrop"],
+        test: (f, b) =>
+            -relChange(f.shoulderWidthPx, b.shoulderWidthPx) > config.slumpBackThresh &&
+            f.headDrop - b.headDrop > config.slumpDropMin,
+    },
+    {
+        label: "leaning toward the screen",
+        signals: ["shoulderWidthPx"],
+        test: (f, b) => relChange(f.shoulderWidthPx, b.shoulderWidthPx) > config.leanInThresh,
+    },
+    {
+        label: "head jutting forward",
+        signals: ["eyeRatio", "earRatio"],
+        test: (f, b) => faceChange(f, b) > config.headForwardThresh,
     },
     {
         label: "shoulders uneven",

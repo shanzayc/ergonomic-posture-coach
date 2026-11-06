@@ -30,7 +30,7 @@ Also includes session stats (time tracked, % good posture, best streak, alerts),
 
 ## How it works
 
-[MediaPipe BlazePose](https://google.github.io/mediapipe/) finds 33 body points in each webcam frame, about 30 times a second. From your shoulders, nose, eyes and ears, the app runs five checks against your calibrated baseline:
+[MediaPipe BlazePose](https://google.github.io/mediapipe/) finds 33 body points in each webcam frame (about 18 frames a second on a MacBook Air). From your shoulders, nose, eyes and ears, the app runs six checks against your calibrated baseline:
 
 | Check | What it looks at | Fires when |
 |---|---|---|
@@ -39,6 +39,9 @@ Also includes session stats (time tracked, % good posture, best streak, alerts),
 | Head jutting forward | Face width ÷ shoulder width | 12%+ larger than baseline |
 | Leaning to one side | How far your head sits off-center | 0.15+ further off-center (skipped while your head is turned) |
 | Shoulders uneven | Height difference between your shoulders | 0.12+ more than baseline |
+| Slumped back in the chair | Shoulder width and head drop | 15%+ narrower (sank away from the camera) while the head sits 0.03+ lower |
+
+When several checks fire at once, the alert names the cause rather than a side effect. For example, leaning in also makes your face look bigger, so it says "leaning toward the screen" rather than "head jutting forward."
 
 Readings are smoothed over about half a second. An alert fires after a bad posture lasts 4 seconds, and posture has to look good for a full second before that timer resets.
 
@@ -46,7 +49,9 @@ Readings are smoothed over about half a second. An alert fires after a bad postu
 
 Measured with the built-in accuracy test: 70 labeled trials over 10 rounds, each posture held naturally for 7 seconds, with a fresh calibration each round. The rules were fixed before testing, and both rule sets were scored from the same recorded frames.
 
-| Posture | Original rules | Current rules |
+These results are for the tuned rules *before* the slumped-back check and the naming order were added. Those changes were based on this test, so they'll be measured on new trials.
+
+| Posture | Original rules | Tuned rules |
 |---|---|---|
 | Lean toward screen | 2/10 | **10/10** |
 | Lean on one elbow | 4/10 | **10/10** |
@@ -89,7 +94,7 @@ A second recording showed exaggerated slumping and chin-forward being caught (he
 
 Add `?debug` to the URL (for example `https://shanzayc.github.io/ergonomic-posture-coach/?debug`) to open a tuning panel. It shows every reading live next to your baseline, records a 3-second average while you hold each of seven postures, and gives you the results as text to copy.
 
-The same page has an **accuracy test**: it walks you through rounds of labeled trials (hold each posture for 7 seconds), saves every frame, and replays them through the app's real alert logic to report detection and false-alarm rates. It scores the original rules and the current ones side by side from the same trials, and lets you download the raw data.
+The same page has an **accuracy test**: it walks you through rounds of labeled trials (hold each posture for 7 seconds), saves every frame, and replays them through the app's real alert logic to report detection rate, false-alarm rate, and how often the alert named the right problem. It covers 5 bad postures and 6 normal movements (like reaching for a mug or stretching), scores the original rules and the current ones side by side from the same trials, keeps each test run separate, and lets you download the raw data.
 
 <details>
 <summary>Settings in <code>postureCoach.js</code></summary>
@@ -103,6 +108,8 @@ const config = {
   headForwardThresh: 0.12,   // Face 12% larger relative to shoulders = head jutting forward
   headSidewaysThresh: 0.15,  // Head further off-center (ignored while the head is turned)
   shoulderTiltThresh: 0.12,  // Shoulders more uneven than baseline
+  slumpBackThresh: 0.15,     // Shoulders 15% narrower = sank back away from the camera...
+  slumpDropMin: 0.03,        // ...while the head sits at least this much lower
   headTurnThresh: 0.15,      // Face 15% narrower = head turned
 };
 ```
@@ -137,7 +144,7 @@ Pose detection runs in your browser, and video frames are never uploaded or save
 
 ## Limitations
 
-- **Slumping back isn't caught yet.** Sinking back into the chair moves you away from the camera, and only leaning *in* is checked (slump: 1/10 in testing). Chin-forward is caught about half the time, since it barely changes what a front-facing camera sees.
+- **Slumping was the weak spot.** Sinking back into the chair moves you away from the camera, which the tested rules didn't check for (slump: 1/10). A slumped-back check has since been added. Chin-forward was caught about half the time, since it barely changes what a front-facing camera sees.
 - **Limits come from one person's recordings.** Different cameras, desks and bodies may need different limits. Use `?debug` to check yours.
 - **Calibration matters.** If you're slouching during the first 5 seconds, that becomes your baseline. Recalibrate if that happens.
 - **Background alerts may slow down.** Browsers throttle hidden tabs, which can delay alerts if the tab stays hidden for a long time.

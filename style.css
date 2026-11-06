@@ -443,6 +443,37 @@ canvas {
   margin-top: 14px;
 }
 
+.eval-postures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 14px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.eval-postures label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.eval-postures input { accent-color: var(--accent); margin: 0; }
+
+.eval-run-filter {
+  margin-bottom: 8px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.eval-run-filter[hidden] { display: none; }
+
 .eval-rounds {
   display: inline-flex;
   align-items: center;
