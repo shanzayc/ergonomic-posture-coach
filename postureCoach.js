@@ -10,6 +10,7 @@ const loadingStatus = document.getElementById("loadingStatus");
 
 const posturePill = document.getElementById("posturePill");
 const notifyNote = document.getElementById("notifyNote");
+const soundToggle = document.getElementById("soundToggle");
 
 const statDuration = document.getElementById("statDuration");
 const statGood = document.getElementById("statGood");
@@ -26,8 +27,16 @@ const config = {
     headDropThresh: 0.18,
     minCalibrationSamples: 45,
 
-    // Don't nag more than once a minute while the tab is in the background.
+    // Keypoints jitter frame to frame. Readings are smoothed over roughly
+    // this window, and posture has to look good for recoverSeconds straight
+    // before the slouch timer resets, so one clean frame can't wipe it.
+    smoothingSeconds: 0.5,
+    recoverSeconds: 1,
+
+    // Don't nag more than once a minute while you're looking elsewhere.
     notifyCooldownSeconds: 60,
+    soundCooldownSeconds: 20,
+    soundKey: "ergoPosture.sound.v1",
 
     // A hidden tab can be frozen outright; without a cap one resume would
     // dump the whole frozen stretch into a single posture bucket.
@@ -58,13 +67,16 @@ let state = {
 
     baseline: null,
     samples: [],
+    smoothed: null,
     badDuration: 0,
+    goodRunSec: 0,
     lastEvalAt: null,
     calibStartedAt: null,
     lastSampledPose: null,
 
     stats: freshStats(),
     lastNotifyAt: -Infinity, // "never notified" — 0 would mute the first minute
+    lastSoundAt: -Infinity,
 };
 
 // ---------------- HELPERS ----------------
@@ -129,6 +141,18 @@ function averageFeatures(samples) {
     };
 }
 
+// Time-based moving average, so it behaves the same at any frame rate.
+function smoothFeatures(prev, next, dtSec) {
+    if (!prev) return next;
+    const a = 1 - Math.exp(-dtSec / config.smoothingSeconds);
+    const mix = key => prev[key] + a * (next[key] - prev[key]);
+    return {
+        shoulderTilt: mix("shoulderTilt"),
+        headForward: mix("headForward"),
+        headDrop: mix("headDrop"),
+    };
+}
+
 // ---------------- NOTIFICATIONS ----------------
 function notificationsSupported() {
     return typeof Notification !== "undefined";
@@ -139,12 +163,12 @@ function describeNotifyState() {
         return "Background alerts aren't supported in this browser.";
     }
     if (Notification.permission === "granted") {
-        return "🔔 Background alerts on — you'll be notified even on another tab.";
+        return "🔔 Background alerts on — you'll be notified while you're in another app or tab.";
     }
     if (Notification.permission === "denied") {
-        return "🔕 Background alerts blocked. Enable notifications in your browser's site settings to be alerted while on another tab.";
+        return "🔕 Background alerts blocked. Enable notifications in your browser's site settings to be alerted while you're in another app or tab.";
     }
-    return "🔔 Allow notifications to be alerted while you're on another tab.";
+    return "🔔 Allow notifications to be alerted while you're in another app or tab.";
 }
 
 function refreshNotifyNote() {
@@ -166,8 +190,10 @@ async function requestNotificationPermission() {
 function notifyBadPosture() {
     if (!notificationsSupported() || Notification.permission !== "granted") return;
 
-    // If they're looking at the tab the pill already told them.
-    if (!document.hidden) return;
+    // If they're looking at the page the pill already told them. A visible
+    // but unfocused window (beside an editor, on another monitor) still
+    // counts as looking away.
+    if (!document.hidden && document.hasFocus()) return;
 
     // performance.now() throughout, so the cooldown shares one clock
     // with the posture timers.
@@ -180,6 +206,7 @@ function notifyBadPosture() {
             body: "You've been slouching for a few seconds.",
             tag: "ergo-posture", // replace the old one instead of stacking
             renotify: true,
+            silent: soundEnabled, // the chime already played; don't double up
         });
         note.onclick = () => {
             window.focus();
@@ -188,6 +215,64 @@ function notifyBadPosture() {
     } catch (err) {
         console.warn("Could not show notification:", err);
     }
+}
+
+// ---------------- SOUND ----------------
+let audioCtx = null;
+let soundEnabled = loadSoundPref();
+
+function loadSoundPref() {
+    try {
+        return localStorage.getItem(config.soundKey) !== "off";
+    } catch {
+        return true;
+    }
+}
+
+function saveSoundPref() {
+    try {
+        localStorage.setItem(config.soundKey, soundEnabled ? "on" : "off");
+    } catch {
+        // Not worth bothering anyone about; it just won't be remembered.
+    }
+}
+
+// Browsers only allow audio after a user gesture, so this runs from clicks.
+function unlockAudio() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    if (!audioCtx) audioCtx = new Ctx();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+}
+
+function playChime() {
+    if (!audioCtx) return;
+
+    // Two soft descending tones: noticeable without being an alarm.
+    const t = audioCtx.currentTime;
+    [880, 660].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const start = t + i * 0.18;
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + 0.4);
+    });
+}
+
+function soundBadPosture() {
+    if (!soundEnabled) return;
+
+    const now = performance.now();
+    if (now - state.lastSoundAt < config.soundCooldownSeconds * 1000) return;
+    state.lastSoundAt = now;
+
+    playChime();
 }
 
 // ---------------- EVALUATION ----------------
@@ -207,15 +292,17 @@ function evaluatePosture() {
     state.lastEvalAt = now;
     const dtMs = dtSec * 1000;
 
-    const features = extractFeatures(state.pose);
+    const raw = extractFeatures(state.pose);
+    const features = raw && smoothFeatures(state.smoothed, raw, dtSec);
+    state.smoothed = features;
 
     // ---- AUTO CALIBRATION ----
     if (state.mode === "autoCalibrating") {
         if (state.calibStartedAt === null) state.calibStartedAt = now;
 
         // Poses can arrive faster than they change; only sample new ones.
-        if (features && state.pose !== state.lastSampledPose) {
-            state.samples.push(features);
+        if (raw && state.pose !== state.lastSampledPose) {
+            state.samples.push(raw);
             state.lastSampledPose = state.pose;
         }
 
@@ -244,6 +331,7 @@ function evaluatePosture() {
         state.status = "nopose";
         state.stats.noPoseMs += dtMs;
         state.badDuration = 0;
+        state.goodRunSec = 0;
         setPill("No pose detected", "neutral");
         return;
     }
@@ -255,7 +343,17 @@ function evaluatePosture() {
             config.headForwardThresh ||
         features.headDrop - state.baseline.headDrop > config.headDropThresh;
 
-    if (bad) {
+    if (!bad && state.badDuration > 0) {
+        state.goodRunSec += dtSec;
+    }
+
+    if (!bad && state.badDuration > 0 && state.goodRunSec < config.recoverSeconds) {
+        // Looks fine, but not for long enough to trust yet. Hold the slouch
+        // timer where it is and keep the current status.
+        if (state.status === "bad") state.stats.badMs += dtMs;
+        else state.stats.warnMs += dtMs;
+    } else if (bad) {
+        state.goodRunSec = 0;
         state.badDuration += dtSec;
 
         if (state.badDuration >= config.sustainedBadSeconds) {
@@ -263,6 +361,7 @@ function evaluatePosture() {
             if (state.status !== "bad") {
                 state.stats.alerts += 1;
                 state.status = "bad";
+                soundBadPosture();
             }
             state.stats.badMs += dtMs;
             setPill("Poor posture — adjust", "bad");
@@ -279,6 +378,7 @@ function evaluatePosture() {
         state.stats.currentStreakMs = 0;
     } else {
         state.badDuration = 0;
+        state.goodRunSec = 0;
         state.status = "good";
         state.stats.goodMs += dtMs;
         state.stats.currentStreakMs += dtMs;
@@ -415,7 +515,9 @@ function drawKeypoints(pose) {
 function beginCalibration() {
     state.mode = "autoCalibrating";
     state.samples = [];
+    state.smoothed = null;
     state.badDuration = 0;
+    state.goodRunSec = 0;
     state.status = "neutral";
     state.calibStartedAt = null;
     state.lastSampledPose = null;
@@ -429,6 +531,7 @@ async function startSession() {
         return;
     }
 
+    unlockAudio();
     startButton.disabled = true;
     loadingOverlay.classList.remove("hidden");
     loadingStatus.textContent = "Starting camera…";
@@ -454,6 +557,7 @@ async function startSession() {
     state.stats = freshStats();
     state.lastEvalAt = null;
     state.lastNotifyAt = -Infinity;
+    state.lastSoundAt = -Infinity;
     beginCalibration();
 
     window.postureTracking.startDetection();
@@ -490,6 +594,17 @@ function endSession() {
 
 startButton.onclick = startSession;
 endButton.onclick = endSession;
+
+soundToggle.checked = soundEnabled;
+soundToggle.onchange = () => {
+    soundEnabled = soundToggle.checked;
+    saveSoundPref();
+    if (soundEnabled) {
+        // Doubles as a preview, and the click unlocks audio.
+        unlockAudio();
+        playChime();
+    }
+};
 
 // Save rather than lose the session if they close the tab mid-run.
 window.addEventListener("pagehide", () => {

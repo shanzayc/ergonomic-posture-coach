@@ -286,6 +286,21 @@ canvas {
   border-color: var(--text-faint);
 }
 
+.sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.sound-toggle input {
+  accent-color: var(--accent);
+  margin: 0;
+}
+
 .notify-note {
   color: var(--text-muted);
   font-size: 0.85rem;
