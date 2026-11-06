@@ -66,6 +66,8 @@ A second recording showed exaggerated slumping and chin-forward being caught (he
 
 Add `?debug` to the URL (for example `https://shanzayc.github.io/ergonomic-posture-coach/?debug`) to open a tuning panel. It shows every reading live next to your baseline, records a 3-second average while you hold each of seven postures, and gives you the results as text to copy.
 
+The same page has an **accuracy test**: it walks you through rounds of labeled trials (hold each posture for 7 seconds), saves every frame, and replays them through the app's real alert logic to report detection and false-alarm rates. It scores the original rules and the current ones side by side from the same trials, and lets you download the raw data.
+
 <details>
 <summary>Settings in <code>postureCoach.js</code></summary>
 
@@ -102,6 +104,7 @@ Then open http://localhost:8000. Browsers only allow camera access on `https://`
 | `postureCoach.js` | Signals, calibration, posture checks, alerts, stats and history |
 | `postureTracking.js` | Camera and pose-detection wrapper |
 | `debugPanel.js` | The `?debug` tuning panel |
+| `evaluator.js` | The `?debug` accuracy test |
 
 The live demo is served by GitHub Pages from the `gh-pages` branch.
 

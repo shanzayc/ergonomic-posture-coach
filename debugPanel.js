@@ -67,7 +67,7 @@
 
     function renderLive() {
         const base = state.baseline;
-        const now = state.smoothed;
+        const now = state.timer.smoothed;
         const flagged = flaggedSignals(now, base);
         liveBody.innerHTML = SIGNALS.map(s => {
             const b = base?.[s.key];

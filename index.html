@@ -119,6 +119,28 @@
       </aside>
     </main>
 
+    <section id="evalCard" class="card eval-card" hidden>
+      <h2 class="card-title">Accuracy test</h2>
+      <p class="debug-legend">
+        Each round walks through all 7 postures: a 3-second countdown, then hold the posture
+        for 7 seconds (beeps mark the start and end). Every frame is saved, then scored against
+        the original rules and the current ones. Start a session and finish calibrating first.
+      </p>
+      <div class="eval-controls">
+        <label class="eval-rounds">Rounds <input id="evalRounds" type="number" min="1" max="20" value="10" /></label>
+        <button id="evalStart" class="btn btn-primary btn-small">Start test</button>
+        <button id="evalStop" class="btn btn-ghost btn-small" hidden>Stop</button>
+      </div>
+      <div id="evalPrompt" class="eval-prompt" aria-live="polite"></div>
+      <div id="evalResults"></div>
+      <div class="eval-actions">
+        <button id="evalCopy" class="btn btn-ghost btn-small">Copy summary</button>
+        <button id="evalExport" class="btn btn-ghost btn-small">Download data</button>
+        <button id="evalUndo" class="btn btn-ghost btn-small">Discard last trial</button>
+        <button id="evalClear" class="btn btn-ghost btn-small">Clear all</button>
+      </div>
+    </section>
+
     <section class="card history-card">
       <h2 class="card-title">Recent sessions</h2>
       <div id="historyList" class="history-list"></div>
@@ -145,5 +167,6 @@
   <script src="postureTracking.js"></script>
   <script src="postureCoach.js"></script>
   <script src="debugPanel.js"></script>
+  <script src="evaluator.js"></script>
 </body>
 </html>

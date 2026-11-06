@@ -75,9 +75,7 @@ let state = {
 
     baseline: null,
     samples: [],
-    smoothed: null,
-    badDuration: 0,
-    goodRunSec: 0,
+    timer: newTimer(),
     lastEvalAt: null,
     calibStartedAt: null,
     lastSampledPose: null,
@@ -85,6 +83,7 @@ let state = {
     stats: freshStats(),
     lastNotifyAt: -Infinity, // "never notified" — 0 would mute the first minute
     lastSoundAt: -Infinity,
+    quietAlerts: false, // set while the ?debug evaluator runs trials
 };
 
 // ---------------- HELPERS ----------------
@@ -203,6 +202,47 @@ function postureProblems(f, b) {
     return POSTURE_CHECKS.filter(c => c.test(f, b));
 }
 
+// ---------------- SLOUCH TIMER ----------------
+// Turns per-frame readings into an alert. Kept free of UI and stats so the
+// ?debug evaluator can replay recorded trials through exactly this logic.
+function newTimer() {
+    return { smoothed: null, badDuration: 0, goodRunSec: 0 };
+}
+
+function smoothInto(timer, raw, dtSec) {
+    timer.smoothed = raw && smoothFeatures(timer.smoothed, raw, dtSec);
+    return timer.smoothed;
+}
+
+// phase is "nopose", "good", "warn", "bad" (alert-worthy), or "hold": a good
+// reading mid-slouch that hasn't lasted long enough to trust. `opts` lets the
+// evaluator score other rule sets.
+function stepTimer(timer, features, dtSec, baseline, opts = {}) {
+    const { problemsFn = postureProblems, recoverSeconds = config.recoverSeconds } = opts;
+
+    if (!features) {
+        timer.badDuration = 0;
+        timer.goodRunSec = 0;
+        return { phase: "nopose", problems: [] };
+    }
+
+    const problems = problemsFn(features, baseline);
+    if (problems.length === 0) {
+        if (timer.badDuration > 0) {
+            timer.goodRunSec += dtSec;
+            if (timer.goodRunSec < recoverSeconds) return { phase: "hold", problems };
+        }
+        timer.badDuration = 0;
+        timer.goodRunSec = 0;
+        return { phase: "good", problems };
+    }
+
+    timer.goodRunSec = 0;
+    timer.badDuration += dtSec;
+    const phase = timer.badDuration >= config.sustainedBadSeconds ? "bad" : "warn";
+    return { phase, problems };
+}
+
 // Optional signals can be null on some frames; each key averages whatever
 // readings it has.
 function averageFeatures(samples) {
@@ -262,6 +302,7 @@ async function requestNotificationPermission() {
 }
 
 function notifyBadPosture(problem) {
+    if (state.quietAlerts) return;
     if (!notificationsSupported() || Notification.permission !== "granted") return;
 
     // If they're looking at the page the pill already told them. A visible
@@ -340,7 +381,7 @@ function playChime() {
 }
 
 function soundBadPosture() {
-    if (!soundEnabled) return;
+    if (!soundEnabled || state.quietAlerts) return;
 
     const now = performance.now();
     if (now - state.lastSoundAt < config.soundCooldownSeconds * 1000) return;
@@ -367,9 +408,9 @@ function evaluatePosture() {
     const dtMs = dtSec * 1000;
 
     const raw = extractFeatures(state.pose);
-    const features = raw && smoothFeatures(state.smoothed, raw, dtSec);
-    state.smoothed = features;
+    const features = smoothInto(state.timer, raw, dtSec);
     window.debugPanel?.onFeatures(raw);
+    window.evaluator?.onFeatures(raw);
 
     // ---- AUTO CALIBRATION ----
     if (state.mode === "autoCalibrating") {
@@ -402,32 +443,19 @@ function evaluatePosture() {
     }
 
     // ---- MONITORING ----
-    if (!features) {
+    const { phase, problems } = stepTimer(state.timer, features, dtSec, state.baseline);
+
+    if (phase === "nopose") {
         state.status = "nopose";
         state.stats.noPoseMs += dtMs;
-        state.badDuration = 0;
-        state.goodRunSec = 0;
         setPill("No pose detected", "neutral");
-        return;
-    }
-
-    const problems = postureProblems(features, state.baseline);
-    const bad = problems.length > 0;
-
-    if (!bad && state.badDuration > 0) {
-        state.goodRunSec += dtSec;
-    }
-
-    if (!bad && state.badDuration > 0 && state.goodRunSec < config.recoverSeconds) {
-        // Looks fine, but not for long enough to trust yet. Hold the slouch
-        // timer where it is and keep the current status.
+    } else if (phase === "hold") {
+        // Looks fine, but not for long enough to trust yet. Keep the
+        // current status.
         if (state.status === "bad") state.stats.badMs += dtMs;
         else state.stats.warnMs += dtMs;
-    } else if (bad) {
-        state.goodRunSec = 0;
-        state.badDuration += dtSec;
-
-        if (state.badDuration >= config.sustainedBadSeconds) {
+    } else if (phase === "bad" || phase === "warn") {
+        if (phase === "bad") {
             // Count the alert once per slouch, not once per frame.
             if (state.status !== "bad") {
                 state.stats.alerts += 1;
@@ -448,8 +476,6 @@ function evaluatePosture() {
         }
         state.stats.currentStreakMs = 0;
     } else {
-        state.badDuration = 0;
-        state.goodRunSec = 0;
         state.status = "good";
         state.stats.goodMs += dtMs;
         state.stats.currentStreakMs += dtMs;
@@ -494,6 +520,7 @@ function loadHistory() {
 function saveSessionToHistory(s) {
     const tracked = trackedMs(s);
     if (tracked < 10000) return; // ignore accidental few-second sessions
+    if (s.evaluation) return; // ?debug accuracy tests aren't real usage
 
     const entry = {
         startedAt: s.startedAt,
@@ -586,9 +613,7 @@ function drawKeypoints(pose) {
 function beginCalibration() {
     state.mode = "autoCalibrating";
     state.samples = [];
-    state.smoothed = null;
-    state.badDuration = 0;
-    state.goodRunSec = 0;
+    state.timer = newTimer();
     state.status = "neutral";
     state.calibStartedAt = null;
     state.lastSampledPose = null;

@@ -430,6 +430,71 @@ canvas {
   resize: vertical;
 }
 
+/* ---------------- Accuracy test (?debug) ---------------- */
+.eval-card { margin-top: 24px; }
+.eval-card[hidden] { display: none; }
+
+.eval-controls,
+.eval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.eval-rounds {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.eval-rounds input {
+  width: 56px;
+  padding: 5px 6px;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+/* Big enough to read at a glance while holding a posture. */
+.eval-prompt {
+  margin: 16px 0;
+  min-height: 1.5em;
+}
+
+.eval-prompt strong {
+  display: block;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.eval-prompt span {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.eval-table-wrap { overflow-x: auto; }
+
+.eval-table { min-width: 520px; }
+
+.eval-label {
+  margin-left: 6px;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+}
+
+.eval-summary td {
+  font-weight: 600;
+  color: var(--text);
+}
+
 /* ---------------- Steps / note ---------------- */
 .steps {
   margin: 0;
