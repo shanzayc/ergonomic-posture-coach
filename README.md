@@ -14,6 +14,8 @@ A posture coach that watches you through your webcam while you work and tells yo
 - **Calibrated to you.** It learns your neutral posture at the start of each session and only flags changes that are worse than that.
 - **Alerts that reach you.** A desktop notification like "Sit up: leaning toward the screen" and an optional chime, even while you're working in another app.
 
+  <img src="docs/notification.png" alt="macOS notification from Chrome reading &quot;Sit up: leaning toward the screen&quot;" width="351">
+
 Also includes session stats (time tracked, % good posture, best streak, alerts), a history of your last 10 sessions, and smoothing so normal jitter doesn't trigger false alarms.
 
 ![Recent sessions list showing each session's date, length, percentage of good posture (color-coded) and number of alerts](docs/history.png)
