@@ -47,28 +47,56 @@ Readings are smoothed over about half a second. An alert fires after a bad postu
 
 ## Accuracy
 
-Measured with the built-in accuracy test: 70 labeled trials over 10 rounds, each posture held naturally for 7 seconds, with a fresh calibration each round. The rules were fixed before testing, and both rule sets were scored from the same recorded frames.
+Measured with the built-in accuracy test in two runs of labeled trials. Each posture was held naturally for 7 seconds, with a fresh calibration each round, and both rule sets were scored from the same recorded frames. The rules were fixed before each run started.
 
-These results are for the tuned rules *before* the slumped-back check and the naming order were added. Those changes were based on this test, so they'll be measured on new trials.
+### Run 2: current rules on fresh trials
+
+55 trials over 5 rounds, recorded after every change below was made.
+
+| Posture | Original rules | Current rules |
+|---|---|---|
+| Lean toward screen | 4/5 | **5/5** |
+| Slump down | 1/5 | **5/5** |
+| Chin forward | 0/5 | **5/5** |
+| Lean on one elbow | 3/5 | **5/5** |
+| Look down at keyboard | 5/5 | **5/5** |
+| **Bad postures caught** | **52%** (13/25) | **100%** (25/25) |
+| Good posture | 0/5 | 0/5 |
+| Look at other monitor | 0/5 | 0/5 |
+| Reach for a mug | 0/5 | 0/5 |
+| Glance down at keyboard | 0/5 | 0/5 |
+| Shift in your chair | 0/5 | 1/5 |
+| Stretch | 0/5 | 4/5 |
+| **False alarm rate** | **0%** (0/30) | **17%** (5/30) |
+| **Named the right problem** | — | **68%** (17/25) |
+
+- **Every bad posture was caught,** including slumping (5/5), which the earlier rules nearly always missed.
+- **Stretching is the main source of false alarms (4 of 5).** A stretch held for several seconds looks like bad posture to the camera: one shoulder up, leaning back, head to one side. Normal movements like reaching for a mug or glancing at the keyboard caused none.
+- **Leaning toward the screen was always caught but named "head down"** (0/5 named right), because the tester dropped their head while leaning in, and "head down" ranks first so looking at the keyboard is named correctly.
+- The original rules had no false alarms mostly because they caught so little.
+
+### Run 1: what led to the changes
+
+70 trials over 10 rounds, before the slumped-back check and the naming order were added. The tuned rules caught **70%** of bad postures (35/50), up from **34%** (17/50) with the original rules, with 1 false alarm in 20 okay postures. Smoothing alone accounted for 34% → 42%.
+
+The misses pointed to the changes. In 7 of 10 slump trials the tester sank back *away* from the camera (shoulders 19–37% narrower), which nothing checked for: slump was caught 1/10. And alerts named the right problem only 43% of the time, because the first matching check in a fixed list was named, and leaning in often triggered other checks too. Run 2 tested the fixes on new trials.
+
+<details>
+<summary>Run 1 per-posture results</summary>
 
 | Posture | Original rules | Tuned rules |
 |---|---|---|
-| Lean toward screen | 2/10 | **10/10** |
-| Lean on one elbow | 4/10 | **10/10** |
-| Look down at keyboard | 8/10 | **9/10** |
-| Chin forward | 1/10 | **5/10** |
+| Lean toward screen | 2/10 | 10/10 |
+| Lean on one elbow | 4/10 | 10/10 |
+| Look down at keyboard | 8/10 | 9/10 |
+| Chin forward | 1/10 | 5/10 |
 | Slump down | 2/10 | 1/10 |
-| **Bad postures caught** | **34%** (17/50) | **70%** (35/50) |
 | Good posture (false alarms) | 0/10 | 0/10 |
 | Look at other monitor (false alarms) | 0/10 | 1/10 |
-| **False alarm rate** | **0%** (0/20) | **5%** (1/20) |
 
-- **The new signals made most of the difference.** Smoothing alone raised detection from 34% to 42%; the new checks took it to 70%.
-- **Slump is the weak spot.** In 7 of 10 slump trials the tester sank back *away* from the camera (shoulders 19–37% narrower), which none of the checks look for yet.
-- **The one false alarm** was a head turn that narrowed the face 14%, just short of the 15% cutoff for "turned."
-- Runs at about **18 frames per second** on a MacBook Air.
+</details>
 
-All trials were by one person (the developer), so other bodies and setups may differ. Scores were cross-checked with an independent re-implementation of the scoring in Python.
+All 125 trials were by one person (the developer), so other bodies and setups may differ, and 25 bad-posture trials is a small sample. Scores were cross-checked with an independent re-implementation of the scoring in Python. The app runs at about **18 frames per second** on a MacBook Air.
 
 ## Tuning from real data
 
@@ -144,7 +172,9 @@ Pose detection runs in your browser, and video frames are never uploaded or save
 
 ## Limitations
 
-- **Slumping was the weak spot.** Sinking back into the chair moves you away from the camera, which the tested rules didn't check for (slump: 1/10). A slumped-back check has since been added. Chin-forward was caught about half the time, since it barely changes what a front-facing camera sees.
+- **Stretching can trigger an alert.** A stretch held for 4+ seconds looks like bad posture (4 of 5 stretches alerted in testing). The "shoulders uneven" check is a likely place to start: it was the only check behind 2 of the 5 false alarms and never caught a bad posture by itself.
+- **Leaning in is often named "head down."** The alert fires, but when you drop your head as you lean in, it names the head drop.
+- **Subtle slouching is harder to see.** Testing used natural but clear postures. A very slight slump or chin-forward barely changes what a front-facing camera sees.
 - **Limits come from one person's recordings.** Different cameras, desks and bodies may need different limits. Use `?debug` to check yours.
 - **Calibration matters.** If you're slouching during the first 5 seconds, that becomes your baseline. Recalibrate if that happens.
 - **Background alerts may slow down.** Browsers throttle hidden tabs, which can delay alerts if the tab stays hidden for a long time.
