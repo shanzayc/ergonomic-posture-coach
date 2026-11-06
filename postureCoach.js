@@ -276,8 +276,8 @@ function notifyBadPosture(problem) {
     state.lastNotifyAt = now;
 
     try {
-        const note = new Notification("Sit up 🪑", {
-            body: `Poor posture for a few seconds: ${problem}.`,
+        const note = new Notification(`Sit up: ${problem}`, {
+            body: "You've been holding this posture for a few seconds.",
             tag: "ergo-posture", // replace the old one instead of stacking
             renotify: true,
             silent: soundEnabled, // the chime already played; don't double up

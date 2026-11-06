@@ -1,134 +1,129 @@
-# 🧘 Ergonomic Posture Coach
+# Ergonomic Posture Coach
 
-A real-time posture monitoring web application that uses AI-powered pose detection to help you maintain healthy posture while working. The app runs entirely in your browser with complete privacy - no video data is uploaded or stored.
+A posture coach that watches you through your webcam while you work and tells you exactly what's wrong: leaning toward the screen, head down, head jutting forward, or leaning to one side. Everything runs in your browser. No video is uploaded or stored.
 
-## 🌐 Live Demo
-https://shanzayc.github.io/ergonomic-posture-coach/
+**Live demo:** https://shanzayc.github.io/ergonomic-posture-coach/
 
-## ✨ Features
+## What makes it different
 
-- **Real-time Posture Detection**: Uses MediaPipe BlazePose for accurate body pose tracking
-- **Automatic Calibration**: Learns your neutral posture in the first 5 seconds
-- **Instant Feedback**: Visual alerts when you slouch or tilt your head forward
-- **Privacy-First**: All processing happens locally in your browser
-- **No Installation Required**: Runs directly in any modern web browser
-- **Visual Indicators**: Color-coded status pill shows your posture in real-time
+- **Uses what a front-facing camera can actually see.** A laptop webcam can't see you from the side, so instead of side-view angles it watches for signs it *can* see: your shoulders getting wider in the frame when you lean in, and your face getting larger relative to your shoulders when your head juts forward.
+- **Limits picked from recorded data, not guesses.** A built-in tuning mode records what each signal does while you hold specific postures. The current limits came from those recordings (see [Tuning from real data](#tuning-from-real-data)).
+- **Tells a head turn from a slouch.** Glancing at a second monitor shifts your head sideways, just like leaning on an elbow. The app tells them apart by face width and doesn't alert on head turns.
+- **Calibrated to you.** It learns your neutral posture at the start of each session and only flags changes that are worse than that.
+- **Alerts that reach you.** A desktop notification like "Sit up: leaning toward the screen" and an optional chime, even while you're working in another app.
 
-## 🚀 Quick Start
+Also includes session stats (time tracked, % good posture, best streak, alerts), a history of your last 10 sessions, and smoothing so normal jitter doesn't trigger false alarms.
 
-### Prerequisites
+## How to use
 
-- A modern web browser (Chrome, Firefox, Safari, or Edge)
-- Webcam access
-- Internet connection (for loading ML models)
+1. Put your webcam in front of you, near eye level, with your head and shoulders in frame.
+2. Click **Start session** and allow camera access. Allow notifications too if you want alerts while you're in other apps.
+3. Sit the way you want to sit for the first 5 seconds while it calibrates. Everything afterwards is measured against this.
+4. Keep working. Hold a bad posture for about 4 seconds and you'll get an alert saying what's wrong.
+5. Shifted position? Click **Recalibrate**. Done? Click **End session**: the camera turns off and the session is saved.
 
-### Running Locally (Optional)
+## How it works
 
-If you want to run the project locally or make modifications:
+[MediaPipe BlazePose](https://google.github.io/mediapipe/) finds 33 body points in each webcam frame, about 30 times a second. From your shoulders, nose, eyes and ears, the app runs five checks against your calibrated baseline:
 
-1. Clone the repository:
-```bash
-git clone https://github.com/shanzayc/ergonomic-posture-coach.git
-cd ergonomic-posture-coach
-```
+| Check | What it looks at | Fires when |
+|---|---|---|
+| Leaning toward the screen | Shoulder width in the frame | 20%+ wider than baseline |
+| Head down | How far your nose sits below your shoulders | 0.18+ lower than baseline |
+| Head jutting forward | Face width ÷ shoulder width | 12%+ larger than baseline |
+| Leaning to one side | How far your head sits off-center | 0.15+ further off-center (skipped while your head is turned) |
+| Shoulders uneven | Height difference between your shoulders | 0.12+ more than baseline |
 
-2. Open `index.html` in your web browser
+Readings are smoothed over about half a second. An alert fires after a bad posture lasts 4 seconds, and posture has to look good for a full second before that timer resets.
 
-## 📖 How to Use
+## Tuning from real data
 
-1. **Position Your Webcam**: Place your webcam directly in front of you at eye level
-2. **Click "Start Session"**: Allow camera access when prompted
-3. **Sit with Good Posture**: The app will automatically calibrate to your neutral posture in the first 5 seconds
-4. **Continue Working**: The app will monitor your posture and alert you if you slouch
-5. **Need to recalibrate?**: If you change positions or take a break, click "Start Session" again to recalibrate your neutral posture
+The first version measured your nose sliding left or right of your shoulders and called it "head forward." Recording real postures showed that was the wrong signal:
 
-### Status Indicators
+| Posture | Shoulder width | Face size | Head drop | Head sideways |
+|---|---|---|---|---|
+| Good posture | +1% | −1% | −0.01 | −0.01 |
+| Lean toward screen | **+28%** | **+23%** | **+0.20** | −0.03 |
+| Look at other monitor | +2% | **−35%** | −0.07 | **+0.195** |
+| Lean on one elbow | +9% | **+29%** | +0.13 | **+0.215** |
+| Look down at keyboard | +4% | **+45%** | **+0.52** | −0.01 |
 
-- 🟢 **Good posture**: You're maintaining proper alignment
-- 🟡 **Posture drifting**: Your posture is starting to deviate
-- 🔴 **Poor posture**: Adjust your position to avoid strain
+*Change from the calibrated baseline, one recording per posture.*
 
-## 🛠️ Technical Details
+- **Leaning in** showed up clearly in shoulder width (+28%) but barely moved the old "head forward" signal.
+- **Looking at another monitor** came within 0.025 of the old rule's 0.22 limit, a false alarm waiting to happen, while **leaning on an elbow** stayed just under it and was never flagged.
+- **Face width separates the two:** it shrinks when you turn your head (−35%) and grows when you lean (+29%), so the sideways check now skips frames where your head is turned.
 
-### Technologies Used
+A second recording showed exaggerated slumping and chin-forward being caught (head drop +0.28, face size +16%), and normal shifting in the chair reaching +12% shoulder width, so the lean-in limit was set to 20%.
 
-- **TensorFlow.js**: Machine learning framework for browser-based AI
-- **MediaPipe BlazePose**: High-fidelity body pose tracking
-- **HTML5 Canvas**: Real-time video rendering and visualization
-- **Vanilla JavaScript**: No framework dependencies for maximum compatibility
+### Tune it for your setup
 
-### How It Works
+Add `?debug` to the URL (for example `https://shanzayc.github.io/ergonomic-posture-coach/?debug`) to open a tuning panel. It shows every reading live next to your baseline, records a 3-second average while you hold each of seven postures, and gives you the results as text to copy.
 
-1. **Pose Detection**: MediaPipe BlazePose identifies 33 body keypoints in real-time
-2. **Feature Extraction**: The app measures shoulder tilt and head-forward position
-3. **Baseline Learning**: During calibration, it records your neutral posture metrics
-4. **Continuous Monitoring**: Compares current posture against baseline thresholds
-5. **Alert System**: Triggers warnings when poor posture is sustained for 4+ seconds
-
-### Configuration
-
-You can customize the detection sensitivity in `postureCoach.js`:
+<details>
+<summary>Settings in <code>postureCoach.js</code></summary>
 
 ```javascript
 const config = {
   autoCalibrateSeconds: 5,   // Calibration duration
-  sustainedBadSeconds: 4,    // Time before triggering alert
+  sustainedBadSeconds: 4,    // How long a bad posture lasts before an alert
   leanInThresh: 0.2,         // Shoulders 20% wider in frame = leaning toward the screen
   headDropThresh: 0.18,      // Head sinking toward the shoulders
   headForwardThresh: 0.12,   // Face 12% larger relative to shoulders = head jutting forward
-  headSidewaysThresh: 0.15,  // Head shifted to one side (ignored while the head is turned)
-  shoulderTiltThresh: 0.12,  // One shoulder lower than the other
+  headSidewaysThresh: 0.15,  // Head further off-center (ignored while the head is turned)
+  shoulderTiltThresh: 0.12,  // Shoulders more uneven than baseline
+  headTurnThresh: 0.15,      // Face 15% narrower = head turned
 };
 ```
 
-To pick limits for your own setup, open the app with `?debug` at the end of the URL.
-A tuning panel shows each reading live and lets you record postures to compare.
+</details>
 
-## 📁 Project Structure
+## Running locally
 
-```
-ergonomic-posture-coach/
-├── index.html              # Main HTML file
-├── style.css              # Styling and layout
-├── postureCoach.js        # Main application logic
-├── postureTracking.js     # Pose detection wrapper
-└── README.md             # Documentation
+You need a webcam and an internet connection (the pose model loads from a CDN). Developed and tested in Chrome.
+
+```bash
+git clone https://github.com/shanzayc/ergonomic-posture-coach.git
+cd ergonomic-posture-coach
+python3 -m http.server 8000
 ```
 
-## 🔒 Privacy & Security
+Then open http://localhost:8000. Browsers only allow camera access on `https://` or `localhost`, so opening `index.html` directly from your files may not work.
 
-- **No Data Collection**: Video never leaves your device
-- **Local Processing**: All AI computations run in your browser
-- **No Server Required**: Can run completely offline after initial model download
-- **Open Source**: Inspect the code yourself - it's all client-side JavaScript
+| File | Purpose |
+|---|---|
+| `index.html`, `style.css` | Page layout and styling |
+| `postureCoach.js` | Signals, calibration, posture checks, alerts, stats and history |
+| `postureTracking.js` | Camera and pose-detection wrapper |
+| `debugPanel.js` | The `?debug` tuning panel |
 
-### Development Setup
+The live demo is served by GitHub Pages from the `gh-pages` branch.
 
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+## Privacy
 
+Pose detection runs in your browser, and video frames are never uploaded or saved. Session history stays in your browser's local storage. There are no accounts, server or analytics; the page only loads its scripts, pose model and font from public CDNs (jsDelivr and Google Fonts).
 
-## 📝 Future Enhancements
+## Limitations
 
-- [ ] Add sound notifications for posture alerts
-- [ ] Track posture statistics over time
+- **Subtle slouching can slip through.** A slight slump or chin-forward barely changes what a front-facing camera sees, so only clear versions are caught. Catching subtle ones would cause false alarms during normal sitting.
+- **Limits come from one person's recordings.** Different cameras, desks and bodies may need different limits. Use `?debug` to check yours.
+- **Calibration matters.** If you're slouching during the first 5 seconds, that becomes your baseline. Recalibrate if that happens.
+- **Background alerts may slow down.** Browsers throttle hidden tabs, which can delay alerts if the tab stays hidden for a long time.
+
+## Future enhancements
+
+- [ ] Settings panel for alert sensitivity
+- [ ] Break reminders (e.g. stand up every 30 minutes)
+- [ ] Chart of posture over past sessions
 - [ ] Export posture reports
 - [ ] Multiple calibration profiles
-- [ ] Customizable alert thresholds via UI
 
+## Acknowledgments
 
-## 🙏 Acknowledgments
-
-- [MediaPipe](https://google.github.io/mediapipe/) by Google for pose detection models
-- [TensorFlow.js](https://www.tensorflow.org/js) for browser-based ML
-- Inspired by the need for better ergonomics in remote work
+- [MediaPipe](https://google.github.io/mediapipe/) by Google for the BlazePose model
+- [TensorFlow.js pose-detection](https://github.com/tensorflow/tfjs-models/tree/master/pose-detection) for the browser pose API
 
 ## Contact
-
-If you’d like to connect or have questions about this project:
 
 - **GitHub:** https://github.com/shanzayc
 - **LinkedIn:** https://www.linkedin.com/in/shanzaychaudhry/
