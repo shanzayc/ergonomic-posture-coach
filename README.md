@@ -16,6 +16,8 @@ A posture coach that watches you through your webcam while you work and tells yo
 
 Also includes session stats (time tracked, % good posture, best streak, alerts), a history of your last 10 sessions, and smoothing so normal jitter doesn't trigger false alarms.
 
+![Recent sessions list showing each session's date, length, percentage of good posture (color-coded) and number of alerts](docs/history.png)
+
 ## How to use
 
 1. Put your webcam in front of you, near eye level, with your head and shoulders in frame.
