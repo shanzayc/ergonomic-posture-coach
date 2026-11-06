@@ -71,12 +71,18 @@ You can customize the detection sensitivity in `postureCoach.js`:
 
 ```javascript
 const config = {
-  autoCalibrateSeconds: 5,      // Calibration duration
-  sustainedBadSeconds: 4,        // Time before triggering alert
-  headForwardThresh: 0.22,       // Head forward sensitivity (0-1)
-  shoulderTiltThresh: 0.12,      // Shoulder tilt sensitivity (0-1)
+  autoCalibrateSeconds: 5,   // Calibration duration
+  sustainedBadSeconds: 4,    // Time before triggering alert
+  leanInThresh: 0.15,        // Shoulders 15% wider in frame = leaning toward the screen
+  headDropThresh: 0.18,      // Head sinking toward the shoulders
+  headForwardThresh: 0.12,   // Face 12% larger relative to shoulders = head jutting forward
+  headSidewaysThresh: 0.15,  // Head shifted to one side (ignored while the head is turned)
+  shoulderTiltThresh: 0.12,  // One shoulder lower than the other
 };
 ```
+
+To pick limits for your own setup, open the app with `?debug` at the end of the URL.
+A tuning panel shows each reading live and lets you record postures to compare.
 
 ## 📁 Project Structure
 

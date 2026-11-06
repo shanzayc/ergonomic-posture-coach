@@ -359,6 +359,77 @@ canvas {
   color: var(--text-muted);
 }
 
+/* ---------------- Debug / tuning panel (?debug) ---------------- */
+.debug-card[hidden] { display: none; }
+
+.debug-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.debug-table th,
+.debug-table td {
+  text-align: right;
+  padding: 5px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.debug-table td:not(:first-child) { white-space: nowrap; }
+
+.debug-table th:first-child,
+.debug-table td:first-child { text-align: left; }
+
+.debug-table th {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.debug-table tr.over td { color: var(--bad, #d92d20); font-weight: 600; }
+
+.debug-legend,
+.debug-status {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin: 8px 0 0;
+}
+
+.debug-subtitle {
+  font-size: 0.85rem;
+  margin: 20px 0 10px;
+}
+
+.debug-postures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.btn-small {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  border-radius: 8px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.debug-output {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 12px 0 8px;
+  font: 0.72rem/1.4 ui-monospace, Menlo, monospace;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  resize: vertical;
+}
+
 /* ---------------- Steps / note ---------------- */
 .steps {
   margin: 0;

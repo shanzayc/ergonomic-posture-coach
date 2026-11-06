@@ -85,6 +85,23 @@
           </div>
         </section>
 
+        <section id="debugCard" class="card debug-card" hidden>
+          <h2 class="card-title">Tuning readings</h2>
+          <table class="debug-table">
+            <thead>
+              <tr><th>Signal</th><th>Baseline</th><th>Now</th><th>Change</th></tr>
+            </thead>
+            <tbody id="debugLive"></tbody>
+          </table>
+          <p class="debug-legend">Red rows are past the current alert limit.</p>
+
+          <h3 class="debug-subtitle">Record postures</h3>
+          <div id="debugPostures" class="debug-postures"></div>
+          <p id="debugStatus" class="debug-status"></p>
+          <textarea id="debugOutput" class="debug-output" rows="8" readonly></textarea>
+          <button id="debugCopy" class="btn btn-ghost btn-small">Copy results</button>
+        </section>
+
         <section class="card">
           <h2 class="card-title">How it works</h2>
           <ol class="steps">
@@ -127,5 +144,6 @@
 
   <script src="postureTracking.js"></script>
   <script src="postureCoach.js"></script>
+  <script src="debugPanel.js"></script>
 </body>
 </html>

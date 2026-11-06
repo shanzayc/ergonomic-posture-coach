@@ -22,9 +22,16 @@ const historyList = document.getElementById("historyList");
 const config = {
     autoCalibrateSeconds: 5,
     sustainedBadSeconds: 4,
-    headForwardThresh: 0.22,
+    // Alert limits, picked from recorded postures (open the app with ?debug
+    // to record your own). Percentages are change from your baseline.
+    leanInThresh: 0.15, // shoulders 15% wider in frame: leaning toward the screen
+    headDropThresh: 0.18, // head sunk toward the shoulders: looking down
+    headForwardThresh: 0.12, // face 12% larger next to the shoulders: head jutting out
+    headSidewaysThresh: 0.15, // head shifted off-center: leaning to one side
     shoulderTiltThresh: 0.12,
-    headDropThresh: 0.18,
+    // Face 15% narrower means the head is turned (e.g. to another monitor).
+    // A turned head shifts sideways too, so that check is skipped.
+    headTurnThresh: 0.15,
     minCalibrationSamples: 45,
 
     // Keypoints jitter frame to frame. Readings are smoothed over roughly
@@ -117,40 +124,104 @@ function extractFeatures(pose) {
         y: (ls.y + rs.y) / 2,
     };
 
+    // Ears and eyes can be hidden by hair or glasses, so these are optional.
+    const le = getKP(pose, "left_ear");
+    const re = getKP(pose, "right_ear");
+    const leo = getKP(pose, "left_eye_outer");
+    const reo = getKP(pose, "right_eye_outer");
+
     return {
         shoulderTilt: Math.abs(ls.y - rs.y) / shoulderWidth,
-        headForward: Math.abs(nose.x - shoulderMid.x) / shoulderWidth,
+        headSideways: Math.abs(nose.x - shoulderMid.x) / shoulderWidth,
         headDrop: (nose.y - shoulderMid.y) / shoulderWidth,
+        shoulderWidthPx: shoulderWidth, // grows as you lean toward the camera
+        // Face width next to the shoulders: grows when the head juts forward,
+        // shrinks when it turns away.
+        earRatio: le && re ? dist(le, re) / shoulderWidth : null,
+        eyeRatio: leo && reo ? dist(leo, reo) / shoulderWidth : null,
+        // Only shown in the ?debug panel; didn't separate postures well.
+        neckGapPx: le && re ? shoulderMid.y - (le.y + re.y) / 2 : null,
     };
 }
 
-function averageFeatures(samples) {
-    const sum = samples.reduce(
-        (a, f) => ({
-            shoulderTilt: a.shoulderTilt + f.shoulderTilt,
-            headForward: a.headForward + f.headForward,
-            headDrop: a.headDrop + f.headDrop,
-        }),
-        { shoulderTilt: 0, headForward: 0, headDrop: 0 }
-    );
+// Fractional change from baseline, or null if either reading is missing.
+function relChange(now, base) {
+    if (now === null || now === undefined || !base) return null;
+    return now / base - 1;
+}
 
-    return {
-        shoulderTilt: sum.shoulderTilt / samples.length,
-        headForward: sum.headForward / samples.length,
-        headDrop: sum.headDrop / samples.length,
-    };
+// Prefer the eyes (rarely hidden), fall back to the ears. Both readings must
+// come from the same pair to be comparable.
+function faceChange(f, b) {
+    return relChange(f.eyeRatio, b.eyeRatio) ?? relChange(f.earRatio, b.earRatio);
+}
+
+function headTurned(f, b) {
+    const face = faceChange(f, b);
+    return face !== null && face < -config.headTurnThresh;
+}
+
+// Each check is one way posture can go wrong. `signals` are the readings it
+// looks at, so the ?debug panel can highlight them.
+const POSTURE_CHECKS = [
+    {
+        label: "leaning toward the screen",
+        signals: ["shoulderWidthPx"],
+        test: (f, b) => relChange(f.shoulderWidthPx, b.shoulderWidthPx) > config.leanInThresh,
+    },
+    {
+        label: "head down",
+        signals: ["headDrop"],
+        test: (f, b) => f.headDrop - b.headDrop > config.headDropThresh,
+    },
+    {
+        label: "head jutting forward",
+        signals: ["eyeRatio", "earRatio"],
+        test: (f, b) => faceChange(f, b) > config.headForwardThresh,
+    },
+    {
+        // Unknown head direction counts as turned: better a missed lean than
+        // an alert every time they look at their other monitor.
+        label: "leaning to one side",
+        signals: ["headSideways"],
+        test: (f, b) =>
+            faceChange(f, b) !== null &&
+            !headTurned(f, b) &&
+            Math.abs(f.headSideways - b.headSideways) > config.headSidewaysThresh,
+    },
+    {
+        label: "shoulders uneven",
+        signals: ["shoulderTilt"],
+        test: (f, b) => Math.abs(f.shoulderTilt - b.shoulderTilt) > config.shoulderTiltThresh,
+    },
+];
+
+function postureProblems(f, b) {
+    return POSTURE_CHECKS.filter(c => c.test(f, b));
+}
+
+// Optional signals can be null on some frames; each key averages whatever
+// readings it has.
+function averageFeatures(samples) {
+    const avg = {};
+    for (const key of Object.keys(samples[0])) {
+        const vals = samples.map(f => f[key]).filter(v => v !== null);
+        avg[key] = vals.length ? vals.reduce((a, v) => a + v, 0) / vals.length : null;
+    }
+    return avg;
 }
 
 // Time-based moving average, so it behaves the same at any frame rate.
 function smoothFeatures(prev, next, dtSec) {
     if (!prev) return next;
     const a = 1 - Math.exp(-dtSec / config.smoothingSeconds);
-    const mix = key => prev[key] + a * (next[key] - prev[key]);
-    return {
-        shoulderTilt: mix("shoulderTilt"),
-        headForward: mix("headForward"),
-        headDrop: mix("headDrop"),
-    };
+    const out = {};
+    for (const key of Object.keys(next)) {
+        const p = prev[key];
+        const n = next[key];
+        out[key] = p === null || n === null ? n : p + a * (n - p);
+    }
+    return out;
 }
 
 // ---------------- NOTIFICATIONS ----------------
@@ -187,7 +258,7 @@ async function requestNotificationPermission() {
     refreshNotifyNote();
 }
 
-function notifyBadPosture() {
+function notifyBadPosture(problem) {
     if (!notificationsSupported() || Notification.permission !== "granted") return;
 
     // If they're looking at the page the pill already told them. A visible
@@ -203,7 +274,7 @@ function notifyBadPosture() {
 
     try {
         const note = new Notification("Sit up 🪑", {
-            body: "You've been slouching for a few seconds.",
+            body: `Poor posture for a few seconds: ${problem}.`,
             tag: "ergo-posture", // replace the old one instead of stacking
             renotify: true,
             silent: soundEnabled, // the chime already played; don't double up
@@ -295,6 +366,7 @@ function evaluatePosture() {
     const raw = extractFeatures(state.pose);
     const features = raw && smoothFeatures(state.smoothed, raw, dtSec);
     state.smoothed = features;
+    window.debugPanel?.onFeatures(raw);
 
     // ---- AUTO CALIBRATION ----
     if (state.mode === "autoCalibrating") {
@@ -336,12 +408,8 @@ function evaluatePosture() {
         return;
     }
 
-    const bad =
-        Math.abs(features.shoulderTilt - state.baseline.shoulderTilt) >
-            config.shoulderTiltThresh ||
-        Math.abs(features.headForward - state.baseline.headForward) >
-            config.headForwardThresh ||
-        features.headDrop - state.baseline.headDrop > config.headDropThresh;
+    const problems = postureProblems(features, state.baseline);
+    const bad = problems.length > 0;
 
     if (!bad && state.badDuration > 0) {
         state.goodRunSec += dtSec;
@@ -364,8 +432,8 @@ function evaluatePosture() {
                 soundBadPosture();
             }
             state.stats.badMs += dtMs;
-            setPill("Poor posture — adjust", "bad");
-            notifyBadPosture();
+            setPill(`Poor posture — ${problems[0].label}`, "bad");
+            notifyBadPosture(problems[0].label);
         } else {
             state.status = "warn";
             state.stats.warnMs += dtMs;
