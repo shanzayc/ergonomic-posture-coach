@@ -24,11 +24,12 @@ const config = {
     sustainedBadSeconds: 4,
     // Alert limits, picked from recorded postures (open the app with ?debug
     // to record your own). Percentages are change from your baseline.
-    leanInThresh: 0.15, // shoulders 15% wider in frame: leaning toward the screen
+    // Normal shifting in the chair reached +12%; leaning in was +28%.
+    leanInThresh: 0.2, // shoulders 20% wider in frame: leaning toward the screen
     headDropThresh: 0.18, // head sunk toward the shoulders: looking down
     headForwardThresh: 0.12, // face 12% larger next to the shoulders: head jutting out
-    headSidewaysThresh: 0.15, // head shifted off-center: leaning to one side
-    shoulderTiltThresh: 0.12,
+    headSidewaysThresh: 0.15, // head further off-center than baseline: leaning to one side
+    shoulderTiltThresh: 0.12, // shoulders more uneven than baseline
     // Face 15% narrower means the head is turned (e.g. to another monitor).
     // A turned head shifts sideways too, so that check is skipped.
     headTurnThresh: 0.15,
@@ -162,7 +163,9 @@ function headTurned(f, b) {
 }
 
 // Each check is one way posture can go wrong. `signals` are the readings it
-// looks at, so the ?debug panel can highlight them.
+// looks at, so the ?debug panel can highlight them. Checks only fire in the
+// "worse" direction: if calibration caught you slightly off, sitting
+// straighter than that shouldn't count against you.
 const POSTURE_CHECKS = [
     {
         label: "leaning toward the screen",
@@ -187,12 +190,12 @@ const POSTURE_CHECKS = [
         test: (f, b) =>
             faceChange(f, b) !== null &&
             !headTurned(f, b) &&
-            Math.abs(f.headSideways - b.headSideways) > config.headSidewaysThresh,
+            f.headSideways - b.headSideways > config.headSidewaysThresh,
     },
     {
         label: "shoulders uneven",
         signals: ["shoulderTilt"],
-        test: (f, b) => Math.abs(f.shoulderTilt - b.shoulderTilt) > config.shoulderTiltThresh,
+        test: (f, b) => f.shoulderTilt - b.shoulderTilt > config.shoulderTiltThresh,
     },
 ];
 

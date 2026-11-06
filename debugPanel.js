@@ -134,8 +134,8 @@
         const lines = [
             `Posture Coach tuning data, ${new Date().toLocaleString()}`,
             `Alert limits: lean in +${config.leanInThresh * 100}%, head down +${config.headDropThresh}, ` +
-                `head forward +${config.headForwardThresh * 100}%, sideways ±${config.headSidewaysThresh} ` +
-                `(skipped when turned ${config.headTurnThresh * 100}%+), shoulder tilt ±${config.shoulderTiltThresh}`,
+                `head forward +${config.headForwardThresh * 100}%, sideways +${config.headSidewaysThresh} ` +
+                `(skipped when turned ${config.headTurnThresh * 100}%+), shoulder tilt +${config.shoulderTiltThresh}`,
         ];
 
         for (const [name, { avg, base }] of results) {
