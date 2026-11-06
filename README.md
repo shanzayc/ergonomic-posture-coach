@@ -4,6 +4,8 @@ A posture coach that watches you through your webcam while you work and tells yo
 
 **Live demo:** https://shanzayc.github.io/ergonomic-posture-coach/
 
+![Posture Coach mid-session, alerting "Poor posture — leaning toward the screen" with pose points tracked and session stats alongside](docs/screenshot.png)
+
 ## What makes it different
 
 - **Uses what a front-facing camera can actually see.** A laptop webcam can't see you from the side, so instead of side-view angles it watches for signs it *can* see: your shoulders getting wider in the frame when you lean in, and your face getting larger relative to your shoulders when your head juts forward.
