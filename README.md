@@ -42,6 +42,29 @@ Also includes session stats (time tracked, % good posture, best streak, alerts),
 
 Readings are smoothed over about half a second. An alert fires after a bad posture lasts 4 seconds, and posture has to look good for a full second before that timer resets.
 
+## Accuracy
+
+Measured with the built-in accuracy test: 70 labeled trials over 10 rounds, each posture held naturally for 7 seconds, with a fresh calibration each round. The rules were fixed before testing, and both rule sets were scored from the same recorded frames.
+
+| Posture | Original rules | Current rules |
+|---|---|---|
+| Lean toward screen | 2/10 | **10/10** |
+| Lean on one elbow | 4/10 | **10/10** |
+| Look down at keyboard | 8/10 | **9/10** |
+| Chin forward | 1/10 | **5/10** |
+| Slump down | 2/10 | 1/10 |
+| **Bad postures caught** | **34%** (17/50) | **70%** (35/50) |
+| Good posture (false alarms) | 0/10 | 0/10 |
+| Look at other monitor (false alarms) | 0/10 | 1/10 |
+| **False alarm rate** | **0%** (0/20) | **5%** (1/20) |
+
+- **The new signals made most of the difference.** Smoothing alone raised detection from 34% to 42%; the new checks took it to 70%.
+- **Slump is the weak spot.** In 7 of 10 slump trials the tester sank back *away* from the camera (shoulders 19–37% narrower), which none of the checks look for yet.
+- **The one false alarm** was a head turn that narrowed the face 14%, just short of the 15% cutoff for "turned."
+- Runs at about **18 frames per second** on a MacBook Air.
+
+All trials were by one person (the developer), so other bodies and setups may differ. Scores were cross-checked with an independent re-implementation of the scoring in Python.
+
 ## Tuning from real data
 
 The first version measured your nose sliding left or right of your shoulders and called it "head forward." Recording real postures showed that was the wrong signal:
@@ -114,7 +137,7 @@ Pose detection runs in your browser, and video frames are never uploaded or save
 
 ## Limitations
 
-- **Subtle slouching can slip through.** A slight slump or chin-forward barely changes what a front-facing camera sees, so only clear versions are caught. Catching subtle ones would cause false alarms during normal sitting.
+- **Slumping back isn't caught yet.** Sinking back into the chair moves you away from the camera, and only leaning *in* is checked (slump: 1/10 in testing). Chin-forward is caught about half the time, since it barely changes what a front-facing camera sees.
 - **Limits come from one person's recordings.** Different cameras, desks and bodies may need different limits. Use `?debug` to check yours.
 - **Calibration matters.** If you're slouching during the first 5 seconds, that becomes your baseline. Recalibrate if that happens.
 - **Background alerts may slow down.** Browsers throttle hidden tabs, which can delay alerts if the tab stays hidden for a long time.
