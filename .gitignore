@@ -1,0 +1,7 @@
+# macOS folder metadata
+.DS_Store
+
+# Local editor and Claude Code settings
+.vscode/
+.idea/
+.claude/
