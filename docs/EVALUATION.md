@@ -15,7 +15,11 @@ Scoring replays the recorded frames through the same alert code the live app use
 - **Original + smoothing**: the same limits with the jitter fix, to separate how much each change helped
 - **Current**: the rules as they are now
 
-Because the raw frames are kept, every rule set is scored on exactly the same trials. I also rewrote the scoring in Python and re-ran it on the exported data, and it matched trial for trial.
+Because the raw frames are kept, every rule set is scored on exactly the same trials. I also rewrote the scoring in Python ([`tools/verify_eval.py`](../tools/verify_eval.py)) and re-ran it on the exported data. It matched the app trial for trial. The full export, with every frame of all 125 trials, is in [`docs/data/posture-eval.json`](data/posture-eval.json), so you can reproduce every number on this page:
+
+```bash
+python3 tools/verify_eval.py docs/data/posture-eval.json
+```
 
 ## Picking the signals
 
@@ -86,9 +90,12 @@ Stretching caused 4 of the 5 false alarms. A stretch held for several seconds re
 
 Leaning toward the screen was always caught but named "head down" every time, because I dropped my head as I leaned in. "Head down" ranks above leaning in so that looking down at the keyboard gets the right name, and these two cases are hard to tell apart from the front.
 
+Scoring the Run 1 rules on these same trials separates the two changes. They would have caught 22 of 25; the slumped-back check added the other 3, all slumps. They also named the problem right 15 of 22 times, the same 68% as the current rules. So on new trials the slumped-back check made the difference, and the new naming order didn't improve naming.
+
 ## What I'd change next
 
 - The "shoulders uneven" check was the only reason for 2 of the 5 false alarms and never caught a bad posture by itself. Dropping it, or requiring a longer hold before stretch-like movements alert, would be the first thing to try. Any change would need a new run to measure honestly.
+- Naming is still right only about two-thirds of the time, and the reordering didn't change that. Leaning in and looking down look similar from the front, so telling them apart probably needs a different signal rather than a different order.
 - All 125 trials were mine. Someone with a different build, chair or camera height may need different limits.
 - 25 bad-posture trials is a small sample. A longer run, or a few hours of normal work with every alert marked right or wrong, would give a firmer false-alarm rate.
 
